@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block styles %}
+ <!-- Bootstrap CSS -->
+ 
+<style>
+  
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100vh; /* 讓背景填滿整個視窗 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: url('static/images/background.jpg') center center fixed;
+    background-size: cover; /* 讓圖片適應不同螢幕 */
+    
+}
+
+    .messages-list {
+        padding-left: 0;
+    }
+
+    .message {
+        margin-bottom: 15px;
+        list-style: none;
+        border-radius: 20px;
+        
+        
+    }
+
+    .message-text {
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .sent {
+        background-color: #dcf8c6;
+        align-self: flex-end;
+    }
+
+    .received {
+        background-color: #f1f0f0;
+        align-self: flex-start;
+    }
+
+    .message-form {
+        display: inline-block;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px;
+        background-color: #f8f9fa;
+        z-index: 10
+    }
+
+    .message-input {
+        flex: 1;
+        border-radius: 0;
+        border-right: none;
+    }
+
+    .btn-send {
+        border-radius: 0;
+    }
+
+    
+
+    /* 設置背景圖片和透明度 */
+    .chat-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: relative;
+        /* 確保背景圖片顯示 */
+        
+    }
+
+   
+    .dropdown-container {
+        margin: 10px;
+    }
+
+    /* Added styling for the voice recognition button */
+    .btn-voice {
+        background-color: #f5deb3;
+        color: white;
+        border-radius: 5px;
+        padding: 5px 10px;
+        margin-left: 10px;
+        cursor: pointer;
+    }
+    #animated-image {
+        width: 200px;
+        height: auto;
+        opacity: 0;  /* 先隱藏 */
+        transform: scale(0); /* 初始縮小 */
+        position: fixed;
+        bottom: 100px;
+        right: 50px;
+    }
+    
+    #hidden-btn {
+      opacity: 0;
+      position: fixed; /* 讓按鈕保持在畫面內 */
+      bottom: 50px; /* 調整按鈕位置 */
+      right: 20px; 
+      width: 100px;
+      height: 50px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+  }
+  .pic img{
+    width : 60px
+  }
+  .message-container {
+  display: flex;
+  align-items: center; /* Vertically center the items */
+}
+.message-sender {
+  font-weight: bold;
+  margin-right: 10px; /* Adjust space between sender name and message */
+}
+  
+  
+ 
+</style>
+{% endblock %}
+<header class="header">
+  {% include 'navbar_home.html' %}
+</header>
+{% block content %}
+<div class="chat-container">
+  <div class="card flex-grow-1">
+    {% if user.is_authenticated %}
+    <div class="card-header bg-primary text-white"><b>Welcome, {{user.username}}</b>   <a style="color: yellow;" href="{% url 'login' %}">Logout</a></div>
+    {% else %}
+    <div class="card-header bg-primary text-white"><a style="color: yellow" href="login">Login</a>   <a style="color: yellow;" href="{% url 'patient-register' %}">Register</a></div>
+    {% endif %}
+    
+    <div class="card-body messages-box">
+      
+      <ul class="list-unstyled messages-list">
+        {% for chat in chats %}
+          {% if chat.user == request.user %}
+            <li class="message sent">
+              <div class="message-text">
+                <div class="message-sender">
+                  <b>You</b>
+                </div>
+                <div class="message-content">
+                  {{chat.message}}
+                </div>
+              </div>
+            </li>
+
+            <div class="message-container">
+              <div class="pic">
+                <img src="{% static 'images/doctor.png' %}">
+              </div>
+              <div class="message-sender">
+                <b>AI Chatbot</b>
+              </div>
+              <div class="message received">
+                <div class="message-text">
+                  <div class="message-content">
+                    {{ chat.response }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+
+  </div>
+
+  <form class="message-form">
+    {% csrf_token %}
+    <div class="input-group">
+      <input type="text" class="form-control message-input" placeholder="Type your message..." id="message-input">
+      <div class="input-group-append">
+        <button type="submit" class="btn btn-primary btn-send">Send</button>
+        <button type="button" class="btn-voice" id="voice-button">🎤</button>
+        <!-- 隱藏按鈕 -->
+        <button id="hidden-btn" onclick="showImageAndSpeak()">隱藏按鈕</button>
+        <img id="animated-image" src="{% static 'images/nurse.png' %}" alt="護士圖片">
+
+      </div>
+    </div>
+    
+    <div id="message-box" style="display: none; font-size: 20px; color: red; margin-top: 10px;"></div>
+
+  </form>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script>
+
+window.onload = function() {
+    // 從 Django 模板獲取病歷號碼
+    let patient_id = "{{ patient_id|default:'' }}".trim();
+
+    // 如果 `patient_id` 为空或者是 "None"，則強制跳回登入頁面
+    if (!patient_id || patient_id.toLowerCase() === "none") {
+        alert("請重新登入！因為未獲取病歷號碼");
+        window.location.href = "{% url 'login' %}";
+        return;
+    }
+
+    // 顯示病歷號碼確認視窗
+    let isCorrect = confirm(`您的病歷號碼是 ${patient_id}，是否正確？`);
+
+    // 如果使用者確認病歷號碼不正確，則跳回登入頁面
+    if (!isCorrect) {
+        alert("請重新登入！因為您選擇病歷號碼錯誤");
+        window.location.href = "{% url 'login' %}";
+    }
+};
+
+
+
+  // Handle voice recognition
+  const voiceButton = document.getElementById('voice-button');
+  const messageInput = document.getElementById('message-input');
+
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = 'zh-TW';  // You can change the language here
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  voiceButton.addEventListener('click', () => {
+    recognition.start();
+    voiceButton.disabled = true;
+    voiceButton.textContent = 'Listening...';
+  });
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    messageInput.value = transcript;  // Set the speech to text in the input field
+    voiceButton.disabled = false;
+    voiceButton.textContent = '🎤';  // Reset the button text after the speech is recognized
+  };
+
+  recognition.onerror = (event) => {
+    voiceButton.disabled = false;
+    voiceButton.textContent = '🎤';  // Reset the button if an error occurs
+    alert('Error occurred in speech recognition: ' + event.error);
+  };
+
+  // Handle form submission
+  const messagesList = document.querySelector('.messages-list');
+  const messageForm = document.querySelector('.message-form');
+
+  messageForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const message = messageInput.value.trim();
+    if (message.length === 0) {
+      return;
+    }
+
+    const messageItem = document.createElement('li');
+    messageItem.classList.add('message', 'sent');
+    messageItem.innerHTML = `
+        <div class="message-text">
+            <div class="message-sender">
+                <b>You</b>
+            </div>
+            <div class="message-content">
+                ${message}
+            </div>
+        </div>`;
+    messagesList.appendChild(messageItem);
+
+    messageInput.value = '';
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch('/chatbot/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded','X-CSRFToken': csrftoken, },
+        body: new URLSearchParams({
+            //'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'message': message
+        })
+    })
+      .then(response => response.json())
+      .then(data => {
+        const response = data.response;
+        const messageItem = document.createElement('li');
+        messageItem.classList.add('message', 'received');
+        messageItem.innerHTML = `
+        <div class="message-text">
+            <div class="message-sender">
+              <b>AI Chatbot</b>
+            </div>
+            <div class="message-content">
+                ${response}
+            </div>
+        </div>
+          `;
+        messagesList.appendChild(messageItem);
+        messagesList.scrollTop = messagesList.scrollHeight;
+      });
+  });
+
+function showMessage() {
+    let messageBox = document.getElementById("message-box");
+    messageBox.innerText = "你好";
+    messageBox.style.display = "block";  // 顯示訊息
+}
+function showImageAndSpeak() {
+    let image = document.getElementById("animated-image");
+
+    // 讓圖片顯示並放大
+    gsap.to(image, {
+        opacity: 1,
+        scale: 2,
+        duration: 1,
+        ease: "elastic.out(1, 0.5)"
+    });
+
+    // Web Speech API 朗讀設定
+    let msg = new SpeechSynthesisUtterance();
+    msg.text = "關於您的血壓有稍微高於正常範圍，可以再向醫生及護士提及以留意您的身體狀況？";
+    msg.lang = "zh-TW"; // 設定語言為中文
+    msg.rate = 1.3;  // 語速
+    msg.pitch = 1.8; // 音調稍微高一點
+
+    // 設定語音
+    let voices = speechSynthesis.getVoices();
+    msg.voice = voices.find(voice => voice.lang === "zh-TW") || voices[0];
+
+    // 當語音播放完畢時，隱藏圖片
+    msg.onend = function() {
+        gsap.to(image, {
+            opacity: 0,
+            scale: 1,  // 縮小回原本大小
+            duration: 1
+        });
+    };
+
+    // 播放語音
+    window.speechSynthesis.speak(msg); 
+    const messagesList = document.querySelector('.messages-list');
+    const messageItem = document.createElement('li');
+    messageItem.classList.add('message', 'received');
+    messageItem.innerHTML = `
+        <div class="message-text">
+            <div class="message-sender">
+                <b>AI Chatbot</b>
+            </div>
+            <div class="message-content">
+                ${msg.text}
+            </div>
+        </div>`;
+    messagesList.appendChild(messageItem);
+
+    // 滾動到最新訊息
+    messagesList.scrollTop = messagesList.scrollHeight;
+}
+
+
+</script>
+{% endblock %}

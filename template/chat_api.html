@@ -1,0 +1,1351 @@
+<!-- templates/camera_voice_auto.html -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>攝像頭與自動語音對話</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+
+        .main-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* 左側分類區域 */
+        .category-panel {
+            width: 300px;
+            height: 100%;
+            background-color: #2d3748;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+        }
+
+        .panel-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .category-options {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+        }
+
+        /* 問題類型指示器 */
+        .type-indicator {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .type-indicator.left {
+            background-color: rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .type-indicator:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .type-indicator.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        #report-indicator {
+            border-left: 4px solid #3182ce;
+        }
+
+        #education-indicator {
+            border-left: 4px solid #38a169;
+        }
+
+        .type-icon {
+            font-size: 20px;
+            margin-right: 15px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        #report-indicator .type-icon {
+            background-color: rgba(49, 130, 206, 0.2);
+            color: #3182ce;
+        }
+
+        #education-indicator .type-icon {
+            background-color: rgba(56, 161, 105, 0.2);
+            color: #38a169;
+        }
+
+        .type-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* 右側內容區域 */
+        .content-area {
+            flex: 1;
+            height: 100%;
+            padding: 30px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            background-color: #f8fafc;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .app-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2d3748;
+            margin: 0 0 8px 0;
+        }
+
+        .app-subtitle {
+            font-size: 14px;
+            color: #718096;
+            margin: 0;
+        }
+
+        /* 開關切換按鈕 */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #3182ce;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #3182ce;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            margin-left: 10px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .camera-container {
+            width: 100%;
+            height: 480px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #000;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        #camera {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: white;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .camera-overlay .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ea4335;
+            margin-right: 5px;
+        }
+
+        .dialog-box {
+            width: 100%;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .dialog-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .question-type-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+
+        .question-type-badge.report {
+            background-color: #3182ce;
+        }
+
+        .question-type-badge.education {
+            background-color: #38a169;
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dialog-actions button {
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .dialog-history {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .message:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .system-message {
+            font-style: italic;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .user-message {
+            text-align: right;
+        }
+
+        .user-message .message-content {
+            display: inline-block;
+            background-color: #3182ce;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 18px 18px 0 18px;
+            max-width: 80%;
+        }
+
+        .ai-message .message-content {
+            display: inline-block;
+            background-color: #e2e8f0;
+            color: #2d3748;
+            padding: 8px 12px;
+            border-radius: 18px 18px 18px 0;
+            max-width: 80%;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .voice-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            margin-left: 15px;
+        }
+
+        #text-input {
+            flex: 1;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            font-size: 14px;
+            outline: none;
+            margin-right: 10px;
+        }
+
+        #text-input:focus {
+            border-color: #3182ce;
+            box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+        }
+
+        .mic-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .mic-button:hover {
+            background-color: #3182ce;
+            transform: scale(1.05);
+        }
+
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+
+        .mic-button i {
+            font-size: 16px;
+        }
+
+        .mic-button.listening {
+            background-color: #e53e3e;
+            animation: pulse-mic 1.5s infinite;
+        }
+
+        .send-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #38a169;
+            color: white;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover {
+            background-color: #2f855a;
+            transform: scale(1.05);
+        }
+
+        .send-button:active {
+            transform: scale(0.95);
+        }
+
+        .send-button i {
+            font-size: 16px;
+        }
+
+        .send-button.disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .send-button.disabled:hover {
+            transform: none;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin-right: 5px;
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .status-dot.listening {
+            background-color: #4285f4;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.recording {
+            background-color: #ea4335;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse-mic {
+            0% {
+                box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(229, 62, 62, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(229, 62, 62, 0);
+            }
+        }
+
+        /* 當不同問題類型被選中時的樣式變化 */
+        .content-area.report-active {
+            background-color: rgba(49, 130, 206, 0.05);
+        }
+
+        .content-area.education-active {
+            background-color: rgba(56, 161, 105, 0.05);
+        }
+
+        @media (max-height: 800px) {
+            .camera-container {
+                height: 280px;
+            }
+
+            .dialog-history {
+                max-height: 150px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            .camera-container {
+                height: 240px;
+            }
+
+            .dialog-history {
+                max-height: 120px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container">
+        <!-- 左側問題類型指示器區域 -->
+        <div class="category-panel">
+            <div class="panel-header">
+                <h2 class="panel-title">選擇問題類型</h2>
+                <p class="panel-subtitle">請選擇您要詢問的問題類型</p>
+            </div>
+
+            <div class="category-options">
+                <div class="type-indicator left" id="report-indicator">
+                    <div class="type-icon">
+                        <i class="fas fa-file-medical-alt"></i>
+                    </div>
+                    <div class="type-text">血液透析報告問題</div>
+                </div>
+
+                <div class="type-indicator left" id="education-indicator">
+                    <div class="type-icon">
+                        <i class="fas fa-book-medical"></i>
+                    </div>
+                    <div class="type-text">衛教問題</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側內容區域 -->
+        <div class="content-area">
+            <div class="container">
+                <!-- <div class="app-header">
+                    <h1 class="app-title">智能醫療助手</h1>
+                    <p class="app-subtitle">您的健康問題解答專家</p>
+                </div> -->
+
+                <div class="toggle-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="voice-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">語音偵測</span>
+                </div>
+
+                <!-- <div id="camera-container">
+                    <img src="{% url 'camera_feed' %}" alt="攝像頭畫面">
+                    <div id="camera-controls">
+
+                    </div>
+                </div> -->
+                <div class="camera-container">
+                    <img src="{% url 'camera_feed' %}">
+                    <div class="camera-overlay">
+                        <div class="dot"></div>
+                        <span>錄影中</span>
+                    </div>
+                </div>
+
+                <div class="dialog-box">
+                    <div class="dialog-header">
+                        <div class="dialog-title">
+                            <span>對話紀錄</span>
+                            <span class="question-type-badge report" id="active-type-badge">報告問題</span>
+                        </div>
+                        <div class="dialog-actions">
+                            <button id="clear-history"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="dialog-history" id="dialog-history">
+                        <div class="message system-message">系統: 歡迎使用！系統已自動開始語音偵測，您可以直接說話或輸入文字。</div>
+                    </div>
+
+                    <div class="controls">
+                        <div class="voice-controls">
+                            <button class="mic-button" id="mic-button">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                        </div>
+
+                        <div class="input-container">
+                            <input type="text" id="text-input" placeholder="輸入您的問題...">
+                            <button class="send-button" id="send-button">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="status-indicator">
+                        <div class="status-dot" id="status-dot"></div>
+                        <span class="status-text" id="status-text">準備中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    window.onload = function () {
+        // 從 Django 模板獲取病歷號碼
+        let patient_id = "{{ patient_id|default:'' }}".trim();
+
+        // 如果 `patient_id` 为空或者是 "None"，則強制跳回登入頁面
+        if (!patient_id || patient_id.toLowerCase() === "none") {
+            alert("請重新登入！因為未獲取病歷號碼");
+            window.location.href = "{% url 'login' %}";
+            return;
+        }
+
+        // 顯示病歷號碼確認視窗
+        let isCorrect = confirm(`您的病歷號碼是 ${patient_id}，是否正確？`);
+
+        // 如果使用者確認病歷號碼不正確，則跳回登入頁面
+        if (!isCorrect) {
+            alert("請重新登入！因為您選擇病歷號碼錯誤");
+            window.location.href = "{% url 'login' %}";
+        }
+    };
+    document.addEventListener('DOMContentLoaded', function () {
+        // 獲取CSRF Token (Django需要)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        const video = document.getElementById('camera');
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    // 添加這一行來確保視頻開始播放
+                    video.play();
+                })
+                .catch(function (error) {
+                    console.error("無法訪問攝像頭:", error);
+                    addMessageToDialog("系統", "無法訪問攝像頭，請檢查權限設置。");
+                });
+        } else {
+            addMessageToDialog("系統", "您的瀏覽器不支持攝像頭功能。");
+        }
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+
+        // 更新狀態顯示
+        function updateStatus(isActive, message) {
+            if (statusDot && statusText) {
+                if (isActive) {
+                    statusDot.classList.add("listening");
+                } else {
+                    statusDot.classList.remove("listening");
+                }
+                statusText.textContent = message;
+            }
+        }
+
+
+        // 添加訊息到對話框
+        function addMessageToDialog(sender, message) {
+            const dialogHistory = document.getElementById('dialog-history');
+            if (dialogHistory) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message system-message';
+                messageElement.textContent = `${sender}: ${message}`;
+                dialogHistory.appendChild(messageElement);
+                dialogHistory.scrollTop = dialogHistory.scrollHeight;
+            }
+        }
+
+        // 啟動攝像頭
+        // 
+        // 將原有的 initCamera 函數替換為新版本
+        function initCamera() {
+            updateStatus(false, "正在連接攝像頭...");
+
+            const video = document.getElementById('camera');
+
+            // 連接到 Python 後端的視訊串流
+            video.src = "/camera_feed";
+            video.onloadedmetadata = function () {
+                video.play();
+                updateStatus(true, "攝像頭已連接");
+            };
+
+            // 設置錯誤處理
+            video.onerror = function (err) {
+                console.error("攝像頭錯誤:", err);
+                addMessageToDialog("系統", "無法訪問攝像頭，請檢查權限設置。");
+                updateStatus(false, "攝像頭連接失敗");
+            };
+
+            // 透過 API 啟動人臉偵測
+            fetch('/api/enable_face_detection/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ enable: true })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log("人臉偵測已啟動");
+                    } else {
+                        console.error("無法啟動人臉偵測");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+        // 新增關閉攝像頭函數 - 放在 initCamera 函數後面
+        function closeCamera() {
+            const video = document.getElementById('camera');
+
+            // 停止視訊播放
+            if (video.srcObject) {
+                video.pause();
+                video.srcObject = null;
+            }
+
+            // 通知後端釋放攝像頭資源
+            fetch('/api/release_camera/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log("攝像頭已釋放");
+                        updateStatus(false, "攝像頭已關閉");
+                    } else {
+                        console.error("無法釋放攝像頭");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        // 頁面加載完成後初始化攝像頭
+        document.addEventListener('DOMContentLoaded', function () {
+            initCamera();
+
+            // 若有攝像頭開關，添加事件處理
+            const voiceToggle = document.getElementById('voice-toggle');
+            if (voiceToggle) {
+                voiceToggle.addEventListener('change', function () {
+                    if (this.checked) {
+                        initCamera();
+                    } else {
+                        // 關閉攝像頭
+                        if (video.srcObject) {
+                            const tracks = video.srcObject.getTracks();
+                            tracks.forEach(track => track.stop());
+                            video.srcObject = null;
+                            closeCamera();
+                            updateStatus(false, "攝像頭已關閉");
+                        }
+                    }
+                });
+            }
+        });
+        // 語音識別設置
+        const voiceToggle = document.getElementById('voice-toggle');
+        const sendButton = document.getElementById('send-button');
+        const textInput = document.getElementById('text-input');
+        const dialogHistory = document.getElementById('dialog-history');
+        // const statusDot = document.getElementById('status-dot');
+        // const statusText = document.getElementById('status-text');
+
+        let recognition;
+        let isListening = false;
+        let isSpeaking = false;
+        let isRecognizing = false;
+        let pauseRecognition = false;
+        let silenceTimer = null;
+        let lastSpeechTime = Date.now();
+        let currentTranscript = '';
+
+        // 初始化語音識別（如果瀏覽器支持）
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'zh-TW'; // 設置為繁體中文
+
+            recognition.onstart = function () {
+                isListening = true;
+                isRecognizing = true;
+                currentTranscript = ''; // 清空當前轉錄內容
+                updateStatus("聆聽中...", "listening");
+            };
+
+            recognition.onerror = function (event) {
+                console.error('語音識別錯誤:', event.error);
+                isListening = false;
+                isSpeaking = false;
+
+                if (event.error === 'not-allowed') {
+                    // Handle microphone permission denied specifically
+                    addMessageToDialog("系統", "麥克風存取被拒絕。請在瀏覽器的地址欄點擊鎖頭圖示，並允許使用麥克風。");
+                    updateStatus("麥克風權限被拒絕", "");
+
+                    // Disable the toggle to reflect the current state
+                    if (voiceToggle) voiceToggle.checked = false;
+
+                    // Add a button to retry
+                    const retryButton = document.createElement('button');
+                    retryButton.textContent = "重試麥克風權限";
+                    retryButton.className = "retry-button";
+                    retryButton.onclick = function () {
+                        addMessageToDialog("系統", "正在重新請求麥克風權限...");
+                        startSpeechRecognition();
+                    };
+                    dialogHistory.appendChild(retryButton);
+                } else if (event.error === 'no-speech') {
+                    // No speech detected, this is often normal
+                    updateStatus("聆聽中...", "listening");
+                } else {
+                    // Handle other errors
+                    addMessageToDialog("系統", `語音識別錯誤: ${event.error}`);
+                    updateStatus("語音偵測錯誤", "");
+                }
+            };
+
+            recognition.onresult = function (event) {
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        currentTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                // 顯示目前的轉錄內容 (包括最終和中間結果)
+                textInput.value = currentTranscript + interimTranscript;
+
+                if (interimTranscript) {
+                    isSpeaking = true;
+                    lastSpeechTime = Date.now();
+                    updateStatus("正在說話...", "recording");
+                }
+            };
+
+            recognition.onend = function () {
+                isListening = false;
+                isSpeaking = false;
+                isRecognizing = false;
+                updateStatus("語音偵測已停止", "");
+            };
+
+        } else {
+            addMessageToDialog("系統", "您的瀏覽器不支持語音識別功能。");
+            if (voiceToggle) voiceToggle.disabled = true;
+            updateStatus("不支持語音識別", "");
+        }
+
+        // 空格鍵按下事件：開始/停止語音識別
+        document.addEventListener('keydown', function (event) {
+            if (event.code === 'Space') {
+                event.preventDefault(); // 防止頁面滾動
+
+                if (isListening) {
+                    // 如果正在聆聽，則停止並發送訊息
+                    stopSpeechRecognitionAndSend();
+                } else {
+                    // 如果未在聆聽，則開始語音識別
+                    startSpeechRecognition();
+                }
+            }
+        });
+
+        // 發送按鈕點擊事件
+        sendButton.addEventListener('click', function () {
+            const message = textInput.value.trim();
+            if (message) {
+                sendMessage(message);
+                textInput.value = '';
+            }
+        });
+
+        // 輸入框回車事件
+        textInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const message = textInput.value.trim();
+                if (message) {
+                    sendMessage(message);
+                    textInput.value = '';
+                }
+            }
+        });
+
+        // 開始語音識別
+        function startSpeechRecognition() {
+            if (recognition) {
+                if (isRecognizing) {
+                    console.log("語音辨識已啟動，無需重複啟動");
+                    return;
+                }
+                try {
+                    pauseRecognition = false;
+                    recognition.start();
+                    updateStatus("聆聽中...", "listening");
+                    addMessageToDialog("系統", "語音偵測已啟動，請開始說話。");
+                } catch (e) {
+                    console.error("啟動語音識別失敗:", e);
+
+                    if (e.name === 'NotAllowedError') {
+                        addMessageToDialog("系統", "麥克風存取被拒絕。請在瀏覽器設定中允許使用麥克風後再試。");
+                        if (voiceToggle) voiceToggle.checked = false;
+                    } else {
+                        addMessageToDialog("系統", `啟動語音識別失敗: ${e.message}`);
+                    }
+
+                    updateStatus("語音偵測未啟動", "");
+                }
+            }
+        }
+
+        // 停止語音識別並發送訊息
+        function stopSpeechRecognitionAndSend() {
+            if (recognition) {
+                pauseRecognition = true;
+                try {
+                    recognition.stop();
+
+                    // 檢查是否有內容要發送
+                    const message = textInput.value.trim();
+                    if (message) {
+                        sendMessage(message);
+                        textInput.value = '';
+                        currentTranscript = ''; // 重置轉錄內容
+                    }
+
+                    addMessageToDialog("系統", "語音偵測已關閉。");
+                    updateStatus("語音偵測已關閉", "");
+                } catch (e) {
+                    console.error("停止語音識別失敗:", e);
+                }
+            }
+        }
+
+        // 單純停止語音識別而不發送訊息（用於其他需要暫停的場景）
+        function stopSpeechRecognition() {
+            if (recognition) {
+                pauseRecognition = true;
+                try {
+                    recognition.stop();
+                    updateStatus("語音偵測已關閉", "");
+                } catch (e) {
+                    console.error("停止語音識別失敗:", e);
+                }
+            }
+        }
+
+        function requestMicrophonePermission() {
+            updateStatus("正在檢查麥克風設備...", "");
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                addMessageToDialog("系統", "您的瀏覽器不支持麥克風存取功能。");
+                updateStatus("麥克風功能不支持", "");
+                if (voiceToggle) voiceToggle.checked = false;
+                return;
+            }
+
+            // 先檢查設備是否存在
+            navigator.mediaDevices.enumerateDevices()
+                .then(function (devices) {
+                    const hasMicrophone = devices.some(device => device.kind === 'audioinput');
+
+                    if (!hasMicrophone) {
+                        addMessageToDialog("系統", "未檢測到任何麥克風設備。請確認麥克風已正確連接到電腦。");
+                        updateStatus("未找到麥克風設備", "");
+                        if (voiceToggle) voiceToggle.checked = false;
+
+                        // 添加故障排除指南
+                        addTroubleshootingGuide();
+                        return;
+                    }
+
+                    // 發現麥克風設備，嘗試請求權限
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function (stream) {
+                            addMessageToDialog("系統", "麥克風連接成功！");
+                            stream.getTracks().forEach(track => track.stop());
+
+                            if (voiceToggle && voiceToggle.checked) {
+                                startSpeechRecognition();
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error("麥克風訪問錯誤:", error);
+
+                            if (error.name === 'NotFoundError' || error.message.includes('Requested device not found')) {
+                                addMessageToDialog("系統", "無法存取麥克風設備。雖然系統檢測到麥克風，但無法使用它。");
+                                if (typeof addTroubleshootingGuide === 'function') {
+                                    addTroubleshootingGuide();
+                                }
+                            } else if (error.name === 'NotAllowedError') {
+                                addMessageToDialog("系統", "麥克風存取被拒絕。請在瀏覽器中允許麥克風權限。");
+                            } else {
+                                addMessageToDialog("系統", `麥克風錯誤: ${error.message}`);
+                            }
+
+                            updateStatus("麥克風連接失敗", "");
+                            if (voiceToggle) voiceToggle.checked = false;
+                        });
+                })
+                .catch(function (error) {
+                    console.error("設備枚舉錯誤:", error);
+                    addMessageToDialog("系統", "無法檢查麥克風設備。");
+                    updateStatus("設備檢查失敗", "");
+                    if (voiceToggle) voiceToggle.checked = false;
+                });
+        }
+
+        // 更新狀態指示器
+        function updateStatus(text, state) {
+            if (typeof statusText !== 'undefined' && statusText) {
+                statusText.textContent = text;
+            }
+            if (typeof statusDot !== 'undefined' && statusDot) {
+                statusDot.className = "status-dot";
+                if (state) {
+                    statusDot.classList.add(state);
+                }
+            }
+        }
+        // 發送消息函數
+        function sendMessage(message) {
+            clearDialogHistory();
+            addMessageToDialog("用戶", message);
+
+            // 暫停語音識別，避免識別到系統回應
+            const wasPaused = pauseRecognition;
+            pauseRecognition = true;
+            if (isListening) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    console.error("暫停語音識別失敗:", e);
+                }
+            }
+
+            // 發送消息到後端
+            fetch('/api/chat/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ message: message })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("回傳訊息:", data.response);
+                    console.log("分類:", data.category);
+                    if (data.dangerous) {
+                        // 顯示警示框
+                        showDangerAlert();
+
+                        // 套用危險狀態的視覺效果
+                        applyDangerModeStyles();
+                    }
+                    if (data.response) {
+                        addMessageToDialog("系統", data.response);
+                        speakResponse(data.response);
+                        // 收到回應後，如果之前是啟用的，則恢復語音識別
+                        if (voiceToggle.checked && !wasPaused) {
+                            setTimeout(function () {
+                                pauseRecognition = false;
+                                if (!isListening) {
+                                    try {
+                                        recognition.start();
+                                    } catch (e) {
+                                        console.error("恢復語音識別失敗:", e);
+                                    }
+                                }
+                            }, 1000); // 等待1秒，確保系統回應朗讀完畢
+                        }
+                    }
+                    const educationIndicator = document.getElementById('education-indicator');
+                    const reportIndicator = document.getElementById('report-indicator');
+
+                    if (data.category == 1) {
+                        // 血液透析報告問題被選中
+
+                        // 隱藏衛教問題指示器，顯示血液透析報告問題指示器
+                        educationIndicator.style.display = 'none';
+                        reportIndicator.style.display = 'flex';
+
+                        // 添加高亮動畫效果到血液透析報告問題指示器
+                        reportIndicator.classList.add('highlight-animation');
+
+                        // 改變顏色
+                        reportIndicator.style.backgroundColor = '#f8d7da';
+                        reportIndicator.style.borderColor = '#f5c6cb';
+                        reportIndicator.querySelector('.type-icon').style.color = '#dc3545';
+                        reportIndicator.querySelector('.type-text').style.color = '#721c24';
+
+                        // 2秒後移除動畫效果
+                        setTimeout(() => {
+                            reportIndicator.classList.remove('highlight-animation');
+                        }, 2000);
+
+                    } else {
+                        // 衛教問題被選中
+
+                        // 隱藏血液透析報告問題指示器，顯示衛教問題指示器
+                        reportIndicator.style.display = 'none';
+                        educationIndicator.style.display = 'flex';
+
+                        // 添加高亮動畫效果到衛教問題指示器
+                        educationIndicator.classList.add('highlight-animation');
+
+                        // 改變顏色
+                        educationIndicator.style.backgroundColor = '#d4edda';
+                        educationIndicator.style.borderColor = '#c3e6cb';
+                        educationIndicator.querySelector('.type-icon').style.color = '#28a745';
+                        educationIndicator.querySelector('.type-text').style.color = '#155724';
+
+                        // 2秒後移除動畫效果
+                        setTimeout(() => {
+                            educationIndicator.classList.remove('highlight-animation');
+                        }, 2000);
+                    }
+
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    addMessageToDialog("系統", "發生錯誤，無法處理您的請求。");
+
+                    // 恢復語音識別
+                    if (voiceToggle.checked && !wasPaused) {
+                        pauseRecognition = false;
+                        if (!isListening) {
+                            try {
+                                recognition.start();
+                            } catch (e) {
+                                console.error("恢復語音識別失敗:", e);
+                            }
+                        }
+                    }
+                });
+        }
+        function clearDialogHistory() {
+            dialogHistory.innerHTML = '';
+        }
+        function speakResponse(text) {
+            // 檢查瀏覽器是否支持語音合成
+            if ('speechSynthesis' in window) {
+                // 創建語音合成實例
+                const utterance = new SpeechSynthesisUtterance(text);
+
+                // 設置語言 (可以選擇中文)
+                utterance.lang = 'zh-TW'; // 繁體中文
+                // 或 utterance.lang = 'zh-CN'; // 簡體中文
+
+                // 可選：調整語速
+                utterance.rate = 1.0; // 1.0 是正常語速
+
+                // 可選：調整音量
+                utterance.volume = 1.0; // 1.0 是最大音量
+
+                // 開始朗讀
+                window.speechSynthesis.speak(utterance);
+
+                // 可選：監聽朗讀結束事件
+                utterance.onend = function () {
+                    console.log("系統回應朗讀完畢");
+                }
+            } else {
+                console.error("當前瀏覽器不支持語音合成");
+            }
+        }
+        // 添加消息到對話歷史
+        function addMessageToDialog(sender, message) {
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender === "用戶" ? "user-message" : "system-message"}`;
+            messageDiv.textContent = `${sender}: ${message}`;
+            dialogHistory.appendChild(messageDiv);
+            dialogHistory.scrollTop = dialogHistory.scrollHeight;
+        }
+        function showDangerAlert() {
+            // 創建警示框元素
+            const alertBox = document.createElement('div');
+            alertBox.className = 'danger-alert';
+            alertBox.innerHTML = `
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-message">
+            <h3>緊急情況警示</h3>
+            <p>系統檢測到潛在危險情況，醫護人員已被通知。</p>
+        </div>
+        <button class="alert-close">✕</button>
+    `;
+
+            // 添加樣式
+            alertBox.style.position = 'fixed';
+            alertBox.style.top = '20px';
+            alertBox.style.left = '50%';
+            alertBox.style.transform = 'translateX(-50%)';
+            alertBox.style.backgroundColor = '#f8d7da';
+            alertBox.style.color = '#721c24';
+            alertBox.style.padding = '20px';
+            alertBox.style.borderRadius = '8px';
+            alertBox.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            alertBox.style.zIndex = '1000';
+            alertBox.style.display = 'flex';
+            alertBox.style.alignItems = 'center';
+            alertBox.style.justifyContent = 'space-between';
+            alertBox.style.minWidth = '350px';
+            alertBox.style.maxWidth = '80%';
+            alertBox.style.animation = 'pulse-danger 2s infinite';
+
+            // 添加關閉按鈕功能
+            alertBox.querySelector('.alert-close').addEventListener('click', function () {
+                document.body.removeChild(alertBox);
+            });
+
+            // 添加到頁面
+            document.body.appendChild(alertBox);
+
+            // 播放警示音效 (可選)
+            playAlertSound();
+        }
+
+        // 套用危險模式樣式
+        function applyDangerModeStyles() {
+            // 為 body 添加一個危險模式的類別
+            document.body.classList.add('danger-mode');
+
+            // 添加需要的 CSS
+            const dangerStyle = document.createElement('style');
+            dangerStyle.textContent = `
+        .danger-mode {
+            background-color: rgba(255, 240, 240, 0.95) !important;
+        }
+        
+        .danger-mode .content-area {
+            background-color: rgba(255, 240, 240, 0.9) !important;
+        }
+        
+        .danger-mode .dialog-box {
+            border-color: rgba(220, 53, 69, 0.5) !important;
+        }
+        
+        .danger-mode .camera-container {
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.5) !important;
+        }
+        
+        @keyframes pulse-danger {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.5); }
+            70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+    `;
+
+            document.head.appendChild(dangerStyle);
+
+            // 30秒後恢復正常模式
+            setTimeout(function () {
+                document.body.classList.remove('danger-mode');
+            }, 30000);
+        }
+    });
+</script>
+</body>
+
+</html>
