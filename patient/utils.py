@@ -8,8 +8,9 @@ import pyttsx3,time
 from langchain_ollama import ChatOllama
 import threading
 import pyttsx3
+excel_file_path = r'C:\Users\lala\agent\revised_data.xlsx'
+#excel_file_path = '/app/revised_data.xlsx'
 
-excel_file_path = "C:\\Users\\lala\\Downloads\\revised_data.xlsx"
   # Replace with your Excel file path
 
 # Read the column names from the Excel file

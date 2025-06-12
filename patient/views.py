@@ -17,6 +17,8 @@ import threading
 import cv2
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
+import numpy as np
+
 import cv2
 import threading
 import time
@@ -27,6 +29,8 @@ from django.shortcuts import render
 
 import json
 # Create your views here.
+
+# 登入頁面處理函數
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -65,9 +69,11 @@ def login_view(request):
     # GET 請求時渲染登錄頁面
     return render(request, 'login.html')
 
+# 登出頁面處理函數
 def logout(request):
     return render(request, 'login.html')
 
+# 醫院首頁處理函數
 def hospital_home(request):
      return render(request,'home.html')
 
@@ -75,12 +81,14 @@ def hospital_home(request):
 camera = None
 camera_lock = threading.Lock()
 
+# 獲取攝影機資源的函數
 def get_camera():
     global camera
     with camera_lock:
         if camera is None or not camera.isOpened():
             try:
                 camera = cv2.VideoCapture(0)
+                #camera = cv2.VideoCapture("http://localhost:8081/video")
                 if not camera.isOpened():
                     print("無法開啟攝影機")
                     return None
@@ -110,8 +118,13 @@ greeting_status = {
 chat_api_last_seen = {
     'last_seen_time': time.time()
 }
+danger_status_lock = threading.Lock()
+current_danger_status = False
+
+# 偵測人臉，並播放語音
 def detect_faces(frame, enable_detection=True,current_page='home',request=None):
     """偵測人臉，並播放語音"""
+    global current_danger_status
     #last_seen_time = time.time()
     if not enable_detection:
         return frame
@@ -119,9 +132,9 @@ def detect_faces(frame, enable_detection=True,current_page='home',request=None):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
     current_time = time.time()
-    
+  
     if len(faces) > 0:
-        print("偵測到人！")
+        #print("偵測到人！")
         if current_page == 'chat_api':
             chat_api_last_seen['last_seen_time'] = current_time
         if current_page == 'home':
@@ -131,15 +144,18 @@ def detect_faces(frame, enable_detection=True,current_page='home',request=None):
                 greeting_status['can_greet'] = False
                 greeting_status['last_greet_time'] = current_time
     else:
-        print("沒有偵測到人")
+        #print("沒有偵測到人")
         if current_page == 'chat_api':
                     if time.time() - chat_api_last_seen['last_seen_time'] > 5:
-                        print("⚠️ 危險：5 秒未偵測到人臉")
-                        if request:
-                            request.session['danger_status'] = True
+                        #print("⚠️ 危險：5 秒未偵測到人臉")
+                        danger_triggered = True
+                        #chat_api_last_seen['last_seen_time']= time.time()
+                        with danger_status_lock:
+                            current_danger_status = True
+                        
                     else:
-                        if request:
-                            request.session['danger_status'] = False
+                        with danger_status_lock:
+                            current_danger_status = False
         greeting_status['can_greet'] = True
     
     # 在畫面上標示人臉
@@ -148,6 +164,7 @@ def detect_faces(frame, enable_detection=True,current_page='home',request=None):
     
     return frame
 
+# 產生影像串流（MJPEG 格式）
 def generate_frames(request):
     """產生影像串流（MJPEG 格式）"""
     last_seen_time = time.time()
@@ -187,10 +204,12 @@ def generate_frames(request):
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+# 提供 MJPEG 影像串流
 def camera_feed(request):
     """提供 MJPEG 影像串流"""
     return StreamingHttpResponse(generate_frames(request), content_type="multipart/x-mixed-replace; boundary=frame")
 
+# 訪問 Home 頁面時啟動人臉偵測
 def home(request):
     """訪問 Home 頁面時啟動人臉偵測"""
     request.session['current_page'] = 'home'
@@ -199,19 +218,14 @@ def home(request):
     get_camera()
     return render(request, 'home.html')
 
-# def chat_api(request):
-#     """訪問 chat_api 頁面時也啟動人臉偵測"""
-#     request.session['face_detect_active'] = True
-#     # 確保攝影機已初始化
-#     get_camera()
-#     return render(request, 'chat_api.html')
-
+# 停止人臉偵測但不釋放攝影機資源
 def stop_face_detection(request):
     """停止人臉偵測但不釋放攝影機資源"""
     request.session['face_detect_active'] = False
     print("停止人臉偵測")
     return JsonResponse({'status': 'success'})
 
+# 完全釋放攝影機資源
 def release_camera(request):
     """完全釋放攝影機資源"""
     global camera
@@ -224,8 +238,11 @@ def release_camera(request):
 # Django 伺服器關閉時結束語音執行緒
 import atexit
 
+# 關於我們頁面處理函數
 def about_us(request):
     return render(request, 'about-us.html') 
+
+# 重設密碼頁面處理函數
 def reset_password(request):
     if request.method == 'POST':
         form = ResetPasswordForm(request.POST)
@@ -254,6 +271,17 @@ def reset_password(request):
         form = ResetPasswordForm()
 
     return render(request, 'reset_password.html', {'form': form})
+
+# 獲取危險狀態
+def get_danger_status(request):
+    global current_danger_status
+    with danger_status_lock:
+        status = current_danger_status
+    
+    print("danger_status is ",status)
+    return JsonResponse({'danger': status})
+
+# 聊天 API 處理函數
 def chat_api(request):
     request.session['face_detect_active'] = True
     request.session['current_page'] = 'chat_api'
@@ -263,11 +291,8 @@ def chat_api(request):
     
     try:    
         profile = Profile.objects.get(user=request.user)
-        
-        patient_id = profile.patient_id # 這是我們要傳遞的 patient_id
-        
+        patient_id = profile.patient_id  # 這是我們要傳遞的 patient_id
         print(f"Patient ID in chatbot: {patient_id}")  # For debugging
-        
     except Profile.DoesNotExist:
         patient_id = None 
 
@@ -284,12 +309,10 @@ def chat_api(request):
         # 確保 message 參數存在
         data = json.loads(request.body)
         question = data.get('message')
-        # question = request.POST.get('message')
         print(f"Received message: {question}")
         if question:
             detect = detct_question(question)
             print(f"detct_question: {detect}")  # 確認提取的訊息是有效的
-             # 確認提取的訊息是有效的
             if detect == 1:
                 current_time = timezone.now()
                 print("reponse2..")
@@ -303,39 +326,43 @@ def chat_api(request):
                     print("Chat saved!")  # 確認 chat 是否儲存成功
                 else:
                     print("No response generated to save!")  # 沒有回應時的提示
-
-                #return JsonResponse({'message': question, 'response': response2})
             elif detect == 2:
-                 response2 =health_edu_question(question)
-                 #return JsonResponse({'message': question, 'response': response2})
-            else :
-                 response2 ="請詢問醫護人員"
+                response2 = health_edu_question(question)
+            else:
+                response2 = "請詢問醫護人員"
             
             return JsonResponse({
-            'message': question,
-            'response': response2,
-            'category': detect  # 加這行
-        })
+                'message': question,
+                'response': response2,
+                'category': detect,
+                'dangerous': False
+            })
         else:
             print("Invalid question, no response generated")  # 沒有訊息，無法處理
 
     # 渲染聊天頁面
     print("return")
-    return render(request, 'chat_api.html', {'chats': chats, 'patient_id': patient_id})
+    danger_status = request.session.get('danger_status', False)
+    print("danger_status is ", danger_status)
+    return render(request, 'chat_api.html', {
+        'chats': chats,
+        'patient_id': patient_id,
+        'danger_status': danger_status,
+        'category': 0
+    })
     
-
-
+# 聊天機器人頁面處理函數
 def chatbot(request):
-    # 確認是 GET 還是 POST 請求
-    print("Request method:", request.method)  # 查看請求方法
-
+    request.session['face_detect_active'] = True
+    request.session['current_page'] = 'chatbot'
+    request.session['danger_status'] = False
+    # 確保攝影機已初始化
+    # get_camera()
+    
     try:    
         profile = Profile.objects.get(user=request.user)
-        
         patient_id = profile.patient_id  # 這是我們要傳遞的 patient_id
-        #username = request.user.username
         print(f"Patient ID in chatbot: {patient_id}")  # For debugging
-        
     except Profile.DoesNotExist:
         patient_id = None 
 
@@ -350,44 +377,46 @@ def chatbot(request):
         print("POST request received")  # 確認 POST 請求進來了
 
         # 確保 message 參數存在
-        question = request.POST.get('message')
+        data = json.loads(request.body)
+        question = data.get('message')
+        print(f"Received message: {question}")
         if question:
-            print(f"Received message: {question}")  # 確認提取的訊息是有效的
-        else:
-            print("No message received!")  # 提示沒有接收到訊息
+            detect = detct_question(question)
+            print(f"detct_question: {detect}")  # 確認提取的訊息是有效的
+            if detect == 1:
+                current_time = timezone.now()
+                print("reponse2..")
+                response2 = agent_find_data_gpt(question, patient_id, current_time)
+                print("reponse2 is ",response2)
 
-        # 如果訊息有效，進行資料處理
-        if question:
-            current_time = timezone.now()
-
-            print('Calling agent_find_data...')  # 調用 agent_find_data 函數
-            response = agent_find_data(question, patient_id, current_time)
-            #print("response in chat is ", response)  
-            print("reponse2..")
-            reponse2 = agent_find_data_gpt(question, patient_id, current_time)
-            #print("response in chat is ", response)  # 確認是否生成了回應
-            print("reponse2 is ",reponse2)
-
-            # 儲存訊息與回應
-            if response:  # 確保 response 是有效的
-                chat = Chat(user=request.user, message=question, response=response, created_at=timezone.now())
-                chat.save()
-                print("Chat saved!")  # 確認 chat 是否儲存成功
+                # 儲存訊息與回應
+                if response2:  # 確保 response 是有效的
+                    chat = Chat(user=request.user, message=question, response=response2, created_at=timezone.now())
+                    chat.save()
+                    print("Chat saved!")  # 確認 chat 是否儲存成功
+                else:
+                    print("No response generated to save!")  # 沒有回應時的提示
+            elif detect == 2:
+                response2 = health_edu_question(question)
             else:
-                print("No response generated to save!")  # 沒有回應時的提示
-
-            return JsonResponse({'message': question, 'response': response})
+                response2 = "請詢問醫護人員"
+            
+            return JsonResponse({
+                'message': question,
+                'response': response2,
+                'category': detect,
+                'dangerous': False
+            })
         else:
             print("Invalid question, no response generated")  # 沒有訊息，無法處理
 
     # 渲染聊天頁面
     print("return")
     return render(request, 'chatbot.html', {'chats': chats, 'patient_id': patient_id})
-    
-
 
 from asgiref.sync import sync_to_async
 
+# 病患註冊頁面處理函數
 def patient_register(request):
     if request.method == 'POST':
         form = CreationUser(request.POST)  # 將提交的數據傳入表單

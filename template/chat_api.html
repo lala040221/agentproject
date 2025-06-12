@@ -1,6 +1,7 @@
 <!-- templates/camera_voice_auto.html -->
 <!DOCTYPE html>
 <html lang="zh-TW">
+{% load static %}
 
 <head>
     <meta charset="UTF-8">
@@ -504,6 +505,20 @@
             animation: pulse 1.5s infinite;
         }
 
+        #hidden-btn {
+            padding: 10px 20px;
+            opacity: 0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #animated-image {
+            display: none;
+            max-width: 400px;
+        }
+
         @keyframes pulse {
             0% {
                 opacity: 1;
@@ -597,13 +612,13 @@
                     <p class="app-subtitle">您的健康問題解答專家</p>
                 </div> -->
 
-                <div class="toggle-container">
+                <!-- <div class="toggle-container">
                     <label class="toggle-switch">
                         <input type="checkbox" id="voice-toggle" checked>
                         <span class="slider"></span>
                     </label>
                     <span class="toggle-label">語音偵測</span>
-                </div>
+                </div> -->
 
                 <!-- <div id="camera-container">
                     <img src="{% url 'camera_feed' %}" alt="攝像頭畫面">
@@ -647,16 +662,31 @@
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
+
                     </div>
 
                     <div class="status-indicator">
                         <div class="status-dot" id="status-dot"></div>
                         <span class="status-text" id="status-text">準備中...</span>
                     </div>
+                    <button id="hidden-btn">隱藏按鈕</button>
+
+
                 </div>
+                
+            </div>
+            <div>
+                <img id="animated-image" src="/static/images/nurse.png" alt="Logo" style="display: none;" />
             </div>
         </div>
     </div>
+    <!-- 按鈕觸發 -->
+
+
+    <!-- 浮動護士圖片（初始隱藏）-->
+
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 
 <script>
@@ -679,6 +709,27 @@
             alert("請重新登入！因為您選擇病歷號碼錯誤");
             window.location.href = "{% url 'login' %}";
         }
+    };
+    document.getElementById('hidden-btn').onclick = function () {
+        const image = document.getElementById('animated-image');
+        if (image.style.display === 'block') {
+            image.style.display = 'none';
+            console.log('圖片已隱藏');
+        } else {
+            image.style.display = 'block';
+            console.log('圖片已顯示');
+            // 可選：添加語音功能
+            if ('speechSynthesis' in window) {
+                const speech = new SpeechSynthesisUtterance('你的血壓目前稍高請稍微留意');
+                speech.lang = 'zh-TW';
+                window.speechSynthesis.speak(speech);
+            }
+            setTimeout(() => {
+                image.style.display = 'none';
+                console.log('3 秒後圖片自動隱藏');
+            }, 3500);
+        }
+         
     };
     document.addEventListener('DOMContentLoaded', function () {
         // 獲取CSRF Token (Django需要)
@@ -726,6 +777,9 @@
                 }
                 statusText.textContent = message;
             }
+        }
+        function sayhi() {
+            speakResponse("系統偵測不到使用者，請確認是否離開座位！");
         }
 
 
@@ -815,13 +869,16 @@
                     console.error('Error:', error);
                 });
         }
-
+        
         // 頁面加載完成後初始化攝像頭
         document.addEventListener('DOMContentLoaded', function () {
             initCamera();
 
             // 若有攝像頭開關，添加事件處理
             const voiceToggle = document.getElementById('voice-toggle');
+            // const sendButton = document.getElementById('send-button');
+            // const textInput = document.getElementById('text-input');
+            // const dialogHistory = document.getElementById('dialog-history');
             if (voiceToggle) {
                 voiceToggle.addEventListener('change', function () {
                     if (this.checked) {
@@ -840,12 +897,12 @@
             }
         });
         // 語音識別設置
-        const voiceToggle = document.getElementById('voice-toggle');
+        // const voiceToggle = document.getElementById('voice-toggle');
         const sendButton = document.getElementById('send-button');
         const textInput = document.getElementById('text-input');
         const dialogHistory = document.getElementById('dialog-history');
         // const statusDot = document.getElementById('status-dot');
-        // const statusText = document.getElementById('status-text');
+        //const statusText = document.getElementById('status-text');
 
         let recognition;
         let isListening = false;
@@ -855,6 +912,7 @@
         let silenceTimer = null;
         let lastSpeechTime = Date.now();
         let currentTranscript = '';
+        let voiceToggle;
 
         // 初始化語音識別（如果瀏覽器支持）
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -1033,7 +1091,27 @@
                 }
             }
         }
+        function showImageAndSpeak() {
+            // 獲取護士圖片元素
+            const image = document.getElementById('animated-image');
 
+            // 切換顯示/隱藏狀態
+            if (image.style.display === 'block') {
+                image.style.display = 'none';
+                console.log("隱藏護士圖片");
+            } else {
+                image.style.display = 'block';
+                console.log("顯示護士圖片");
+
+                // 播放語音
+                if ('speechSynthesis' in window) {
+                    const message = "您的血壓有些異常，請通知護理人員確認。";
+                    const utterance = new SpeechSynthesisUtterance(message);
+                    utterance.lang = "zh-TW";
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+        }
         function requestMicrophonePermission() {
             updateStatus("正在檢查麥克風設備...", "");
 
@@ -1107,6 +1185,37 @@
                 }
             }
         }
+        // function checkDangerStatus() {
+        //     fetch('/get_danger_status/')
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             if (data.danger === true) {
+        //                 console.warn("⚠️ 危險狀態！未偵測到人臉");
+        //                 // 顯示警告，例如 alert、紅色圖示、modal 等
+        //                 //alert("⚠️ 系統偵測不到使用者，請確認是否離開座位！");
+        //                 if ('speechSynthesis' in window) {
+        //                     const speech = new SpeechSynthesisUtterance('系統偵測不到病患，請確認是否離開座位！');
+        //                     speech.lang = 'zh-TW';
+        //                     window.speechSynthesis.speak(speech);
+        //                 }
+        //                 Swal.fire({
+        //                     icon: 'warning',
+        //                     title: '⚠️ 系統偵測不到使用者',
+        //                     text: '請確認是否離開座位！',
+        //                     timer: 3000,
+        //                     showConfirmButton: false,
+        //                     timerProgressBar: true
+        //                 });
+        //                 //sayhi();
+        //             }
+        //         })
+        //         .catch(error => console.error("Error checking danger status:", error));
+
+        // }
+        // setInterval(checkDangerStatus, 3000);
+
+
+
         // 發送消息函數
         function sendMessage(message) {
             clearDialogHistory();
@@ -1132,22 +1241,36 @@
                 },
                 body: JSON.stringify({ message: message })
             })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("後端錯誤，狀態碼：" + response.status);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     console.log("回傳訊息:", data.response);
                     console.log("分類:", data.category);
-                    if (data.dangerous) {
-                        // 顯示警示框
-                        showDangerAlert();
-
-                        // 套用危險狀態的視覺效果
-                        applyDangerModeStyles();
-                    }
+                    // if (data.dangerous) {
+                    //     // 顯示警示框
+                    //     handleDangerousStatus(true)
+                    // }
                     if (data.response) {
                         addMessageToDialog("系統", data.response);
                         speakResponse(data.response);
                         // 收到回應後，如果之前是啟用的，則恢復語音識別
-                        if (voiceToggle.checked && !wasPaused) {
+                        if (voiceToggle && voiceToggle.checked && !wasPaused) {
+                            setTimeout(function () {
+                                pauseRecognition = false;
+                                if (!isListening) {
+                                    try {
+                                        recognition.start();
+                                    } catch (e) {
+                                        console.error("恢復語音識別失敗:", e);
+                                    }
+                                }
+                            }, 1000);
+                        }
+                        if (voiceToggle && voiceToggle.checked && !wasPaused) {
                             setTimeout(function () {
                                 pauseRecognition = false;
                                 if (!isListening) {
@@ -1207,12 +1330,25 @@
                     }
 
                 })
-                .catch(error => {
+                .catch(async error => {
+                    const errorMsg = await error.message;
                     console.error('Error:', error);
-                    addMessageToDialog("系統", "發生錯誤，無法處理您的請求。");
+                    addMessageToDialog("系統", "發生錯誤，無法處理您的請求。" + errorMsg);
+                    if (voiceToggle && voiceToggle.checked && !wasPaused) {
+                        setTimeout(function () {
+                            pauseRecognition = false;
+                            if (!isListening) {
+                                try {
+                                    recognition.start();
+                                } catch (e) {
+                                    console.error("恢復語音識別失敗:", e);
+                                }
+                            }
+                        }, 1000);
+                    }
 
                     // 恢復語音識別
-                    if (voiceToggle.checked && !wasPaused) {
+                    if (voiceToggle && voiceToggle.checked && !wasPaused) {
                         pauseRecognition = false;
                         if (!isListening) {
                             try {
@@ -1234,11 +1370,11 @@
                 const utterance = new SpeechSynthesisUtterance(text);
 
                 // 設置語言 (可以選擇中文)
-                utterance.lang = 'zh-TW'; // 繁體中文
+                utterance.lang = 'zh-TW'; // 繁體  中文
                 // 或 utterance.lang = 'zh-CN'; // 簡體中文
 
                 // 可選：調整語速
-                utterance.rate = 1.0; // 1.0 是正常語速
+                utterance.rate = 1.25; // 1.0 是正常語速
 
                 // 可選：調整音量
                 utterance.volume = 1.0; // 1.0 是最大音量
@@ -1263,89 +1399,12 @@
             dialogHistory.appendChild(messageDiv);
             dialogHistory.scrollTop = dialogHistory.scrollHeight;
         }
-        function showDangerAlert() {
-            // 創建警示框元素
-            const alertBox = document.createElement('div');
-            alertBox.className = 'danger-alert';
-            alertBox.innerHTML = `
-        <div class="alert-icon">⚠️</div>
-        <div class="alert-message">
-            <h3>緊急情況警示</h3>
-            <p>系統檢測到潛在危險情況，醫護人員已被通知。</p>
-        </div>
-        <button class="alert-close">✕</button>
-    `;
 
-            // 添加樣式
-            alertBox.style.position = 'fixed';
-            alertBox.style.top = '20px';
-            alertBox.style.left = '50%';
-            alertBox.style.transform = 'translateX(-50%)';
-            alertBox.style.backgroundColor = '#f8d7da';
-            alertBox.style.color = '#721c24';
-            alertBox.style.padding = '20px';
-            alertBox.style.borderRadius = '8px';
-            alertBox.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-            alertBox.style.zIndex = '1000';
-            alertBox.style.display = 'flex';
-            alertBox.style.alignItems = 'center';
-            alertBox.style.justifyContent = 'space-between';
-            alertBox.style.minWidth = '350px';
-            alertBox.style.maxWidth = '80%';
-            alertBox.style.animation = 'pulse-danger 2s infinite';
 
-            // 添加關閉按鈕功能
-            alertBox.querySelector('.alert-close').addEventListener('click', function () {
-                document.body.removeChild(alertBox);
-            });
-
-            // 添加到頁面
-            document.body.appendChild(alertBox);
-
-            // 播放警示音效 (可選)
-            playAlertSound();
-        }
-
-        // 套用危險模式樣式
-        function applyDangerModeStyles() {
-            // 為 body 添加一個危險模式的類別
-            document.body.classList.add('danger-mode');
-
-            // 添加需要的 CSS
-            const dangerStyle = document.createElement('style');
-            dangerStyle.textContent = `
-        .danger-mode {
-            background-color: rgba(255, 240, 240, 0.95) !important;
-        }
-        
-        .danger-mode .content-area {
-            background-color: rgba(255, 240, 240, 0.9) !important;
-        }
-        
-        .danger-mode .dialog-box {
-            border-color: rgba(220, 53, 69, 0.5) !important;
-        }
-        
-        .danger-mode .camera-container {
-            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.5) !important;
-        }
-        
-        @keyframes pulse-danger {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.5); }
-            70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
-        }
-    `;
-
-            document.head.appendChild(dangerStyle);
-
-            // 30秒後恢復正常模式
-            setTimeout(function () {
-                document.body.classList.remove('danger-mode');
-            }, 30000);
-        }
     });
 </script>
 </body>
+<!-- 加在 <head> 或 body 底部 -->
+
 
 </html>

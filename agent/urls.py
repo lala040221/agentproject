@@ -30,6 +30,7 @@ urlpatterns = [
     path('camera_feed/', views.camera_feed, name='camera_feed'),
     path('api/chat/', views.chat_api, name='chat_api'),
     path('release_camera', views.release_camera, name='release_camera'),
+    path('get_danger_status/', views.get_danger_status, name='get_danger_status'),
     #path('reset-password/', views.reset_password, name='reset-password'),
 
 ]

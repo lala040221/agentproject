@@ -1,0 +1,24 @@
+<button id="hidden-btn">隱藏按鈕</button>
+<div>
+    <img id="animated-image" src="/static/images/nurse.png" alt="Logo" style="display: none;" />
+</div>
+
+<script>
+    // 確保函數在全局範圍可用
+    document.getElementById('hidden-btn').onclick = function() {
+        const image = document.getElementById('animated-image');
+        if (image.style.display === 'block') {
+            image.style.display = 'none';
+            console.log('圖片已隱藏');
+        } else {
+            image.style.display = 'block';
+            console.log('圖片已顯示');
+            // 可選：添加語音功能
+            if ('speechSynthesis' in window) {
+                const speech = new SpeechSynthesisUtterance('護士圖片已顯示');
+                speech.lang = 'zh-TW';
+                window.speechSynthesis.speak(speech);
+            }
+        }
+    };
+</script>
